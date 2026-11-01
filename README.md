@@ -73,6 +73,8 @@ Never put real keys in shell history, command-line arguments, logs, or this repo
 
 The open-source CLI is intended to complement backup history products: it compares a pre-backup inventory with an operator-restored Hudu instance and creates a count-only report. A possible paid service is setup help and recurring, supervised restore drills with evidence reports for MSPs that manage multiple Hudu environments. This model is unvalidated; there are no customer interviews, paid pilots, or revenue yet. Do not treat this prototype as a managed backup service or a restore certificate.
 
+See [market research and open questions](docs/MARKET_RESEARCH.md) for the current evidence, competing products, and validation gaps.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
