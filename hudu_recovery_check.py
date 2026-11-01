@@ -127,6 +127,8 @@ def extract_records(payload: object, key: str) -> list[object]:
         value = payload.get(key)
         if isinstance(value, list):
             return value
+        if key == "procedures" and isinstance(payload.get("processes"), list):
+            return payload["processes"]
         value = payload.get("data")
         if isinstance(value, list):
             return value
@@ -239,6 +241,8 @@ def read_manifest(path: pathlib.Path) -> dict[str, object]:
         raise CheckError("Could not read baseline manifest") from None
     if not isinstance(data, dict) or data.get("schema_version") != 1:
         raise CheckError("Unsupported baseline manifest")
+    if not isinstance(data.get("captured_at"), str):
+        raise CheckError("Invalid baseline capture timestamp")
     resources = data.get("resources")
     uploads = data.get("uploads")
     if not isinstance(resources, dict) or not isinstance(uploads, list):
@@ -247,8 +251,13 @@ def read_manifest(path: pathlib.Path) -> dict[str, object]:
         ids = resources.get(endpoint)
         if not isinstance(ids, list) or any(not isinstance(value, str) for value in ids):
             raise CheckError("Invalid baseline resource inventory")
+        if len(ids) != len(set(ids)):
+            raise CheckError("Invalid baseline resource inventory: duplicate id")
     if any(not isinstance(item, dict) or not isinstance(item.get("id"), str) for item in uploads):
         raise CheckError("Invalid baseline upload inventory")
+    upload_ids = [item["id"] for item in uploads]
+    if len(upload_ids) != len(set(upload_ids)):
+        raise CheckError("Invalid baseline upload inventory: duplicate id")
     return data
 
 
@@ -318,6 +327,60 @@ def print_results(results, uploads, check_files: bool) -> int:
     return 1 if failed else 0
 
 
+def write_report(path: pathlib.Path, baseline: dict[str, object], results, uploads, check_files: bool) -> None:
+    baseline_count, restored_count, missing, size_mismatch, files_ok, files_failed, files_unknown = uploads
+    failed = any(row[3] for row in results) or missing > 0 or size_mismatch > 0
+    failed |= check_files and (files_failed > 0 or files_unknown > 0)
+    report = {
+        "schema_version": 1,
+        "captured_at": baseline["captured_at"],
+        "compared_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "result": "check_failed" if failed else "inventory_match",
+        "full_restore_verified": False,
+        "resources": [
+            {"name": name, "baseline": before, "restored": after, "missing": absent}
+            for name, before, after, absent in results
+        ],
+        "uploads": {
+            "baseline": baseline_count,
+            "restored": restored_count,
+            "missing": missing,
+            "size_mismatches": size_mismatch,
+        },
+        "upload_url_checks": {
+            "enabled": check_files,
+            "reachable": files_ok,
+            "unavailable": files_failed,
+            "unknown": files_unknown,
+        },
+        "limitations": [
+            "This report compares API inventory and optional upload URL reachability only.",
+            "It does not verify file contents, passwords, permissions, or Hudu application behavior.",
+            "Manually inspect a representative sample in the restored Hudu UI.",
+        ],
+    }
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, stat.S_IRUSR | stat.S_IWUSR)
+    except FileExistsError:
+        raise
+    except OSError:
+        raise CheckError("Could not create recovery report") from None
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(report, stream, indent=2)
+            stream.write("\n")
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            path.unlink()
+        except OSError:
+            pass
+        raise CheckError("Could not write recovery report") from None
+
+
 def new_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Compare a Hudu baseline with an operator-restored test instance")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -327,6 +390,7 @@ def new_main(argv: list[str]) -> int:
     compare = subparsers.add_parser("compare", help="Compare a baseline with a restored Hudu instance")
     compare.add_argument("--url", required=True, help="Restored, separately licensed test instance URL")
     compare.add_argument("--baseline", required=True, type=pathlib.Path)
+    compare.add_argument("--report", type=pathlib.Path, help="Write a private, count-only JSON report (will not overwrite)")
     compare.add_argument("--check-files", action="store_true", help="HEAD-check restored upload URLs")
     compare.add_argument("--allow-media-host", action="append", default=[], help="Explicit HTTPS hostname allowed for upload URLs or redirects")
     args = parser.parse_args(argv)
@@ -346,12 +410,16 @@ def new_main(argv: list[str]) -> int:
             args.check_files,
             {host.lower() for host in args.allow_media_host},
         )
-        return print_results(results, uploads, args.check_files)
+        status = print_results(results, uploads, args.check_files)
+        if args.report:
+            write_report(args.report, baseline, results, uploads, args.check_files)
+            print(f"Count-only report written with mode 0600: {args.report}")
+        return status
     except CheckError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     except FileExistsError:
-        print("ERROR: baseline output already exists; choose a new path", file=sys.stderr)
+        print("ERROR: output file already exists; choose a new path", file=sys.stderr)
         return 2
 
 

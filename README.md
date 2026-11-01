@@ -8,9 +8,9 @@ Hudu's recovery guide says a complete backup needs both PostgreSQL and uploaded 
 
 - Python 3.11+
 - Two reachable Hudu instances: the source and a test instance that you are authorized and licensed to run
-- Read-only Hudu API keys; disable destructive actions and password access
+- A dedicated Hudu API key with password access, destructive actions, and export permission disabled where possible
 
-Hudu exposes detailed API documentation inside each instance. Check the resource names and response schema for your installed Hudu version before relying on a report. The public API guide documents `x-api-key` authentication, pagination, rate limits, and least-privilege API key configuration. [Hudu REST API guidance](https://support.hudu.com/hc/en-us/articles/11422780787735-REST-API)
+The CLI sends only `GET` requests, but Hudu does not document a method-level GET-only key setting. Treat its dedicated API key as privileged and restrict allowed IPs and company scope where practical. Company-scoped keys only see scoped records, so use an unscoped key when you intend to compare the full instance. Hudu exposes detailed API documentation inside each instance; check the installed version's schema before relying on a report. [Hudu REST API guidance](https://support.hudu.com/hc/en-us/articles/11422780787735-REST-API)
 
 ## Suggested drill procedure
 
@@ -45,7 +45,8 @@ export HUDU_API_KEY
 python3 hudu_recovery_check.py compare \
   --url https://hudu-recovery-test.example.com \
   --baseline hudu-baseline.json \
-  --check-files
+  --check-files \
+  --report recovery-report.json
 ```
 
 If uploaded-file URLs redirect to a separate storage hostname, allow it explicitly:
@@ -58,13 +59,14 @@ python3 hudu_recovery_check.py compare \
   --allow-media-host files.example.net
 ```
 
-Never put real keys in shell history, command-line arguments, logs, or this repository. The CLI prints counts and status only; it does not save API responses or forward API keys to upload hosts. The baseline stores record IDs and upload sizes, not names, passwords, or file contents. It is created with mode `0600` and will not overwrite an existing file. Use HTTPS except for localhost. The CLI follows upload URL redirects only when every hostname is explicitly allowed or matches the restored Hudu host.
+Never put real keys in shell history, command-line arguments, logs, or this repository. The CLI does not save API responses or forward API keys to upload hosts. The baseline stores record IDs and upload sizes, not names, passwords, or file contents. The optional JSON report contains counts and timestamps only; both files are created with mode `0600` and will not overwrite existing files. Use HTTPS except for localhost. The CLI follows upload URL redirects only when every hostname is explicitly allowed or matches the restored Hudu host.
 
 ## Current limits
 
 - The CLI compares IDs in the captured inventory, upload metadata, and optionally whether each restored upload URL responds to `HEAD` with a matching content length. It does not hash or download file contents, validate password values, compare document bodies, or verify every Hudu feature.
 - If source data changes between baseline capture and backup, the baseline can include records absent from that recovery point; capture during a stable backup window.
 - A PASS means the checked API inventories match; it is not certification or proof of a complete disaster recovery.
+- The optional JSON report is an inventory comparison artifact, not a restore certificate or customer attestation.
 - This is a prototype. API response shapes and upload URL behavior must be checked against each deployed Hudu version. A HEAD request may be unsupported by a storage provider.
 - The paid path under investigation is recurring recovery-drill reporting and support for MSPs. There is no customer or revenue validation yet.
 
