@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+hudu-baseline*.json
+*.baseline.json
+__pycache__/
