@@ -12,6 +12,8 @@ Hudu's recovery guide says a complete backup needs both PostgreSQL and uploaded 
 
 The CLI sends only `GET` requests, but Hudu does not document a method-level GET-only key setting. Treat its dedicated API key as privileged and restrict allowed IPs and company scope where practical. Company-scoped keys only see scoped records, so use an unscoped key when you intend to compare the full instance. Hudu exposes detailed API documentation inside each instance; check the installed version's schema before relying on a report. [Hudu REST API guidance](https://support.hudu.com/hc/en-us/articles/11422780787735-REST-API)
 
+**Terms check required:** Hudu's current [Terms of Service](https://www.hudu.com/terms-of-service) broadly restrict automated access, while its API guide describes automation use. The public docs do not settle whether this third-party CLI workflow is permitted under your agreement. Confirm with Hudu before running it on a licensed instance or offering recurring/hosted drills. This tool is local and operator-initiated, but that does not by itself resolve the terms question.
+
 ## Suggested drill procedure
 
 1. Confirm the recovery target is a separately licensed test instance and that no production DNS or mail routes point to it.
