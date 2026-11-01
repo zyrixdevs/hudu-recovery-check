@@ -89,17 +89,21 @@ class HuduClient:
             time.sleep(0.2)
 
     def uploads(self) -> dict[str, dict[str, object]]:
-        payload = self.get_json("uploads")
-        items = extract_records(payload, "uploads")
         uploads: dict[str, dict[str, object]] = {}
-        for record in items:
-            if not isinstance(record, dict) or "id" not in record:
-                raise CheckError("Unexpected uploads response: record has no id")
-            record_id = str(record["id"])
-            if record_id in uploads:
-                raise CheckError("Unexpected uploads response: duplicate upload id")
-            uploads[record_id] = record
-        return uploads
+        page = 1
+        while True:
+            items = extract_records(self.get_json(f"uploads?page={page}"), "uploads")
+            for record in items:
+                if not isinstance(record, dict) or "id" not in record:
+                    raise CheckError("Unexpected uploads response: record has no id")
+                record_id = str(record["id"])
+                if record_id in uploads:
+                    raise CheckError("Unexpected uploads response: duplicate upload id")
+                uploads[record_id] = record
+            if len(items) < PAGE_SIZE:
+                return uploads
+            page += 1
+            time.sleep(0.2)
 
     def inventory(self) -> dict[str, object]:
         resources = {
