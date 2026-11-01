@@ -12,6 +12,17 @@ Hudu's recovery guide says a complete backup needs both PostgreSQL and uploaded 
 
 Hudu exposes detailed API documentation inside each instance. Check the resource names and response schema for your installed Hudu version before relying on a report. The public API guide documents `x-api-key` authentication, pagination, rate limits, and least-privilege API key configuration. [Hudu REST API guidance](https://support.hudu.com/hc/en-us/articles/11422780787735-REST-API)
 
+## Suggested drill procedure
+
+1. Confirm the recovery target is a separately licensed test instance and that no production DNS or mail routes point to it.
+2. Pause Hudu changes, capture the baseline, then take the database and uploaded-file backup as one recovery point.
+3. Restore both the PostgreSQL database and uploaded files to the test instance using Hudu's documented procedure.
+4. Run the comparison from this tool. Investigate missing IDs, upload size mismatches, and unreachable upload URLs before marking the drill successful.
+5. Manually open a small, representative sample of restored records and attachments in the Hudu UI. This CLI cannot verify document contents, password values, permissions, or application behavior.
+6. Record the backup timestamp, Hudu version, restore duration, findings, and corrective actions in your incident or change log; then remove the test environment according to your retention policy.
+
+Do not expose the restored instance publicly during a drill. Use access controls comparable to production because restored data may contain sensitive information.
+
 ## Run a recovery check
 
 Capture an inventory close to the backup checkpoint while Hudu data is not changing. The baseline contains record IDs and upload sizes only. Store it securely with that recovery point.
