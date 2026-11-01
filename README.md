@@ -68,7 +68,10 @@ Never put real keys in shell history, command-line arguments, logs, or this repo
 - A PASS means the checked API inventories match; it is not certification or proof of a complete disaster recovery.
 - The optional JSON report is an inventory comparison artifact, not a restore certificate or customer attestation.
 - This is a prototype. API response shapes and upload URL behavior must be checked against each deployed Hudu version. A HEAD request may be unsupported by a storage provider.
-- The paid path under investigation is recurring recovery-drill reporting and support for MSPs. There is no customer or revenue validation yet.
+
+## Business hypothesis
+
+The open-source CLI is intended to complement backup history products: it compares a pre-backup inventory with an operator-restored Hudu instance and creates a count-only report. A possible paid service is setup help and recurring, supervised restore drills with evidence reports for MSPs that manage multiple Hudu environments. This model is unvalidated; there are no customer interviews, paid pilots, or revenue yet. Do not treat this prototype as a managed backup service or a restore certificate.
 
 ## License
 
